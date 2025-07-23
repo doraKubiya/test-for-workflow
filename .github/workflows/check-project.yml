@@ -21,4 +21,4 @@ jobs:
           # כאן תוסיף עיבוד לבדוק אם ה-status של הכרטיס == "In Progress"
       - name: Do something if needed
         if: always()
-        run: echo "פה אתה כותב את מה שתרצה לבצע"
+        run: echo "תגובה חכמה"
