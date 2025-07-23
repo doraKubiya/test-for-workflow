@@ -1,7 +1,7 @@
 name: Check Project v2
 on:
   schedule:
-    - cron: "*/10 * * * *" # כל 10 דקות
+    - cron: "*/5 * * * *" # כל 10 דקות
   workflow_dispatch: # מאפשר גם להריץ ידנית
 
 jobs:
