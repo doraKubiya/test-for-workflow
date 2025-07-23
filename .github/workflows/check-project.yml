@@ -5,6 +5,9 @@ on:
     types:
       - labeled
 
+permissions:
+  issues: write
+
 jobs:
   comment-on-in-progress:
     if: github.event.label.name == 'in progress'
