@@ -1,8 +1,18 @@
-name: hello-world
-'on': push 
-jobs: 
-  my-job:
+name: Comment on In Progress Issue
+
+on:
+  issues:
+    types:
+      - labeled
+
+jobs:
+  comment-on-in-progress:
+    if: github.event.label.name == 'in progress'
     runs-on: ubuntu-latest
     steps:
-      - name: my-step
-        run: echo "Hello World!"
+      - name: Comment on issue
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          body: |
+            Good job!
