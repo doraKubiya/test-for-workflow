@@ -2,25 +2,21 @@ name: Check Project v2
 
 on:
   schedule:
-    - cron: "*/5 * * * *"   # בודק כל 5 דקות
-  workflow_dispatch:        # אפשר גם להריץ ידנית
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
 
 jobs:
   check-status:
     runs-on: ubuntu-latest
     steps:
-      # מביא את הקבצים של הריפו
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # יוצר את query.json בזמן הריצה
       - name: Create query.json
         run: |
           echo '{"query": "query { user(login:\"doraKubiya\") { projectV2(number:2) { items(first:20) { nodes { id content { ... on Issue { number title } } fieldValues(first:10) { nodes { ... on ProjectV2ItemFieldSingleSelectValue { name field { ... on ProjectV2FieldCommon { name } } } } } } } } } }"}' > query.json
-          echo "✅ query.json נוצר:"
           ls -la
 
-      # שולח בקשה ל‑API
       - name: Call GraphQL API
         run: |
           curl -H "Authorization: bearer ${{ secrets.PROJECT_TOKEN }}" \
@@ -28,23 +24,31 @@ jobs:
                -H "Content-Type: application/json" \
                --data-binary @query.json \
                https://api.github.com/graphql > result.json
-          echo "📄 פלט מ‑API:"
           cat result.json
 
-      # מחפש את ה‑Issue שנמצא ב-In Progress
-      - name: Parse In Progress issues
+      - name: Find issues with In Progress
         id: parse
         run: |
-          ISSUE_NUMBER=$(jq -r '.data.user.projectV2.items.nodes[]
+          ISSUES=$(jq -r '.data.user.projectV2.items.nodes[]
             | select(.fieldValues.nodes[].name?=="In Progress")
             | .content.number' result.json)
-          echo "🔎 ISSUE_NUMBER=$ISSUE_NUMBER"
-          echo "ISSUE_NUMBER=$ISSUE_NUMBER" >> $GITHUB_ENV
 
-      # כותב תגובה באותו Issue
-      - name: Comment on Issue
-        if: env.ISSUE_NUMBER != ''
-        uses: peter-evans/create-or-update-comment@v4
-        with:
-          issue-number: ${{ env.ISSUE_NUMBER }}
-          body: "ברוך הבא ל‑In Progress 🚀"
+          echo "🔎 Found Issues:"
+          echo "$ISSUES"
+
+          # נשמור את הרשימה
+          echo "$ISSUES" > issues.txt
+
+      - name: Comment on each issue
+        if: always()
+        run: |
+          while read issue; do
+            if [ -n "$issue" ]; then
+              echo "💬 מוסיף תגובה ל-#$issue"
+              gh api repos/${{ github.repository }}/issues/$issue/comments \
+                -f body='ברוך הבא ל‑In Progress 🚀' \
+                -H "Authorization: token ${{ secrets.PROJECT_TOKEN }}"
+            fi
+          done < issues.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.PROJECT_TOKEN }}
