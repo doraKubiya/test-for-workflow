@@ -11,10 +11,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 👇 יוצרים את הקובץ query.json בזמן ריצה
+      # 👇 ניצור את הקובץ query.json בזמן אמת
       - name: Create query.json
         run: |
           echo '{"query": "query { user(login:\"doraKubiya\") { projectV2(number:2) { items(first:20) { nodes { id content { ... on Issue { number title } } fieldValues(first:10) { nodes { ... on ProjectV2ItemFieldSingleSelectValue { name field { ... on ProjectV2FieldCommon { name } } } } } } } } } }"}' > query.json
+          echo "✅ query.json נוצר:"
           ls -la
 
       - name: Call GraphQL API
@@ -27,3 +28,7 @@ jobs:
 
           echo "📄 פלט מ-API:"
           cat result.json
+
+      - name: Do something if needed
+        if: always()
+        run: echo "תגובה חכמה"
