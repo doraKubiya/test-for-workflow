@@ -1,23 +1,26 @@
 name: Check Project v2
+
 on:
   schedule:
-    - cron: "*/5 * * * *"
-  workflow_dispatch:
+    - cron: "*/5 * * * *"   # בודק כל 5 דקות
+  workflow_dispatch:        # אפשר גם להריץ ידנית
 
 jobs:
   check-status:
     runs-on: ubuntu-latest
     steps:
+      # מביא את הקבצים של הריפו
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 👇 ניצור את הקובץ query.json בזמן אמת
+      # יוצר את query.json בזמן הריצה
       - name: Create query.json
         run: |
           echo '{"query": "query { user(login:\"doraKubiya\") { projectV2(number:2) { items(first:20) { nodes { id content { ... on Issue { number title } } fieldValues(first:10) { nodes { ... on ProjectV2ItemFieldSingleSelectValue { name field { ... on ProjectV2FieldCommon { name } } } } } } } } } }"}' > query.json
           echo "✅ query.json נוצר:"
           ls -la
 
+      # שולח בקשה ל‑API
       - name: Call GraphQL API
         run: |
           curl -H "Authorization: bearer ${{ secrets.PROJECT_TOKEN }}" \
@@ -25,10 +28,23 @@ jobs:
                -H "Content-Type: application/json" \
                --data-binary @query.json \
                https://api.github.com/graphql > result.json
-
-          echo "📄 פלט מ-API:"
+          echo "📄 פלט מ‑API:"
           cat result.json
 
-      - name: Do something if needed
-        if: always()
-        run: echo "תגובה חכמה"
+      # מחפש את ה‑Issue שנמצא ב-In Progress
+      - name: Parse In Progress issues
+        id: parse
+        run: |
+          ISSUE_NUMBER=$(jq -r '.data.user.projectV2.items.nodes[]
+            | select(.fieldValues.nodes[].name?=="In Progress")
+            | .content.number' result.json)
+          echo "🔎 ISSUE_NUMBER=$ISSUE_NUMBER"
+          echo "ISSUE_NUMBER=$ISSUE_NUMBER" >> $GITHUB_ENV
+
+      # כותב תגובה באותו Issue
+      - name: Comment on Issue
+        if: env.ISSUE_NUMBER != ''
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ env.ISSUE_NUMBER }}
+          body: "ברוך הבא ל‑In Progress 🚀"
