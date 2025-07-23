@@ -12,6 +12,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: List files
+        run: ls -la
+                       
       - name: Call GraphQL API
         run: |
           curl -H "Authorization: bearer ${{ secrets.PROJECT_TOKEN }}" \
