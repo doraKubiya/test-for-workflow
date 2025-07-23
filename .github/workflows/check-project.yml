@@ -1,9 +1,9 @@
-name: Check Project v2
+name: Auto Move to Done
 
 on:
   schedule:
-    - cron: "*/5 * * * *"
-  workflow_dispatch:
+    - cron: "*/5 * * * *"   # רץ כל 5 דקות
+  workflow_dispatch:        # אפשר גם להריץ ידנית
 
 jobs:
   check-status:
@@ -12,11 +12,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # יוצרים query.json להבאת כל הכרטיסים
       - name: Create query.json
         run: |
           echo '{"query": "query { user(login:\"doraKubiya\") { projectV2(number:2) { items(first:20) { nodes { id content { ... on Issue { number title } } fieldValues(first:10) { nodes { ... on ProjectV2ItemFieldSingleSelectValue { name field { ... on ProjectV2FieldCommon { name } } } } } } } } } }"}' > query.json
           ls -la
 
+      # מביאים את הנתונים מהפרויקט
       - name: Call GraphQL API
         run: |
           curl -H "Authorization: bearer ${{ secrets.PROJECT_TOKEN }}" \
@@ -26,29 +28,34 @@ jobs:
                https://api.github.com/graphql > result.json
           cat result.json
 
-      - name: Find issues with In Progress
+      # בודקים אם יש כרטיס ב-In Progress ולוקחים את ה-itemId
+      - name: Parse In Progress item
         id: parse
         run: |
-          ISSUES=$(jq -r '.data.user.projectV2.items.nodes[]
+          ITEM_ID=$(jq -r '.data.user.projectV2.items.nodes[]
             | select(.fieldValues.nodes[].name?=="In Progress")
-            | .content.number' result.json)
+            | .id' result.json)
 
-          echo "🔎 Found Issues:"
-          echo "$ISSUES"
+          echo "ITEM_ID=$ITEM_ID"
+          echo "ITEM_ID=$ITEM_ID" >> $GITHUB_ENV
 
-          # נשמור את הרשימה
-          echo "$ISSUES" > issues.txt
-
-      - name: Comment on each issue
-        if: always()
+      # אם יש כרטיס כזה, מעבירים אותו ל-Done
+      - name: Move to Done
+        if: env.ITEM_ID != ''
         run: |
-          while read issue; do
-            if [ -n "$issue" ]; then
-              echo "💬 מוסיף תגובה ל-#$issue"
-              gh api repos/${{ github.repository }}/issues/$issue/comments \
-                -f body='ברוך הבא ל‑In Progress 🚀' \
-                -H "Authorization: token ${{ secrets.PROJECT_TOKEN }}"
-            fi
-          done < issues.txt
+          echo "🔄 מעביר את $ITEM_ID ל-Done"
+          gh api graphql -f query='
+            mutation($project:ID!, $item:ID!, $field:ID!, $option: String!) {
+              updateProjectV2ItemFieldValue(input: {
+                projectId: $project
+                itemId: $item
+                fieldId: $field
+                value: { singleSelectOptionId: $option }
+              }) { clientMutationId }
+            }' \
+            -F project="PASTE_YOUR_PROJECT_ID_HERE" \
+            -F item="$ITEM_ID" \
+            -F field="PASTE_YOUR_STATUS_FIELD_ID_HERE" \
+            -F option="PASTE_YOUR_DONE_OPTION_ID_HERE"
         env:
           GITHUB_TOKEN: ${{ secrets.PROJECT_TOKEN }}
