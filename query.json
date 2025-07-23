@@ -1,0 +1,3 @@
+{
+  "query": "query { user(login: \"doraKubiya\") { projectV2(number: 2) { items(first: 20) { nodes { id content { ... on Issue { number title } } fieldValues(first: 10) { nodes { ... on ProjectV2ItemFieldSingleSelectValue { name field { ... on ProjectV2FieldCommon { name } } } } } } } } } }"
+}
