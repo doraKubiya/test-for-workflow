@@ -1,20 +1,22 @@
 name: Check Project v2
 on:
   schedule:
-    - cron: "*/5 * * * *" # כל 5 דקות
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 jobs:
   check-status:
     runs-on: ubuntu-latest
     steps:
-      # 👇 הצעד שחסר לך:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: List files
-        run: ls -la
-                       
+      # 👇 יוצרים את הקובץ query.json בזמן ריצה
+      - name: Create query.json
+        run: |
+          echo '{"query": "query { user(login:\"doraKubiya\") { projectV2(number:2) { items(first:20) { nodes { id content { ... on Issue { number title } } fieldValues(first:10) { nodes { ... on ProjectV2ItemFieldSingleSelectValue { name field { ... on ProjectV2FieldCommon { name } } } } } } } } } }"}' > query.json
+          ls -la
+
       - name: Call GraphQL API
         run: |
           curl -H "Authorization: bearer ${{ secrets.PROJECT_TOKEN }}" \
@@ -23,9 +25,5 @@ jobs:
                --data-binary @query.json \
                https://api.github.com/graphql > result.json
 
-          echo "📄 פלט מ‑API:"
+          echo "📄 פלט מ-API:"
           cat result.json
-
-      - name: Do something if needed
-        if: always()
-        run: echo "תגובה חכמה"
