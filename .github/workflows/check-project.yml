@@ -1,13 +1,17 @@
 name: Check Project v2
 on:
   schedule:
-    - cron: "*/5 * * * *" # כל 10 דקות
-  workflow_dispatch: # מאפשר גם להריץ ידנית
+    - cron: "*/5 * * * *" # כל 5 דקות
+  workflow_dispatch:
 
 jobs:
   check-status:
     runs-on: ubuntu-latest
     steps:
+      # 👇 הצעד שחסר לך:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Call GraphQL API
         run: |
           curl -H "Authorization: bearer ${{ secrets.PROJECT_TOKEN }}" \
@@ -16,9 +20,9 @@ jobs:
                --data-binary @query.json \
                https://api.github.com/graphql > result.json
 
+          echo "📄 פלט מ‑API:"
           cat result.json
-          
-          # כאן תוסיף עיבוד לבדוק אם ה-status של הכרטיס == "In Progress"
+
       - name: Do something if needed
         if: always()
         run: echo "תגובה חכמה"
